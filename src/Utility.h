@@ -19,30 +19,18 @@
  *
  */
 
-#include <cstdlib>
+#pragma once
+
+#include <iostream>
+#include <string>
 
 #include "Common.h"
-#include "Basic.h"
-#include "Execute.h"
-#include "ReverseExecute.h"
-#include "Utility.h"
-#include "MD5.h"
 
-int main()
+void Dump(const std::string& text, const State& state)
 {
-    try
+    std::cout << text << std::endl;
+    for (size_t i = 0; i < state.vars.size(); ++i)
     {
-        MD5Experiment();
+        std::cout << "Var" << i << ": " << state.vars[i].value << std::endl;
     }
-    catch (const std::exception& error)
-    {
-        std::cout << "exception: " << error.what() << std::endl;
-        return EXIT_FAILURE;
-    }
-    catch (...)
-    {
-        std::cout << "unknown exception" << std::endl;
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
 }
