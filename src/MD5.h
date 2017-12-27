@@ -278,11 +278,11 @@ common.SetForwardLink(program);
 
     LetRA(exp1, a, program);
     AddRA(exp1, f, program);
-    LetRAI(exp0, k, i, 64, program);
+    LetRAI(exp0, k, i, program);
     AddRA(exp1, exp0, program);
-    LetRAI(exp0, w, g, 16, program);
+    LetRAI(exp0, w, g, program);
     AddRA(exp1, exp0, program);
-    LetRAI(exp0, r, i, 64, program);
+    LetRAI(exp0, r, i, program);
     LcrRA(exp1, exp0, program);
     AddRA(b, exp1, program);
     LetRA(a, temp, program);
@@ -304,7 +304,24 @@ end.SetForwardLink(program);
     //Program program1;
 }
 
-void MD5Experiment()
+void print_md5_hash(const State& result)
+{
+    uint8_t *p;
+    p = (uint8_t *)&result.vars[16].value;
+    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+
+    p = (uint8_t *)&result.vars[17].value;
+    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+
+    p = (uint8_t *)&result.vars[18].value;
+    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+
+    p = (uint8_t *)&result.vars[19].value;
+    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+    puts("");
+}
+
+void MD5Experiment2()
 {
     State input0;
     Program program1;
@@ -333,77 +350,49 @@ void MD5Experiment()
     input0.vars[15].value = 0x00000000;
 
     State result = Execute(program1, input0, info);
+    print_md5_hash(result);
 
-    uint8_t *p;
-    p = (uint8_t *)&result.vars[16].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+    BitExpressionState expressions(input0);
+    State result2 = ExecuteAndGenerateBoolExpressions(program1, input0, info, expressions);
+    print_md5_hash(result);
 
-    p = (uint8_t *)&result.vars[17].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+    std::cout << "h[0].0 = " << expressions.bit_expressions.at(expressions.get_bit_index(16, 0))->to_string(info) << std::endl;
+}
 
-    p = (uint8_t *)&result.vars[18].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+void SmallExperiment()
+{
+    State input;
+    Program program;
+    CVarInfo info;
 
-    p = (uint8_t *)&result.vars[19].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-    puts("");
+    CVar h(input, "h", info);
+    CVar a(input, "a", info);
+    CVar b(input, "b", info);
+    AndRA(a, b, program);
+    LetRA(h, a, program);
 
-    Program program2;
-    State input2;
-    State result2 = ExecuteAndGenerate(program1, input0, info, program2, input2);
+    Basic::Print(program, info);
+    std::cout << std::endl;
 
-    p = (uint8_t *)&result2.vars[16].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+    input.vars[0].value = 0x6c6c6548;
+    input.vars[0].constant = false;
+    input.vars[1].value = 0x0F0F0F0F;
+    input.vars[1].constant = false;
+    input.vars[2].value = 0x00000FFF;
+    input.vars[2].constant = true;
 
-    p = (uint8_t *)&result2.vars[17].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+    std::cout << "input:" << std::endl;
+    Basic::Dump(input, info);
+    State result = Execute(program, input, info);
+    std::cout << "result:" << std::endl;
+    Basic::Dump(result, info);
 
-    p = (uint8_t *)&result2.vars[18].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+    BitExpressionState expressions(input);
+    State result2 = ExecuteAndGenerateBoolExpressions(program, input, info, expressions);
+    std::cout << "result2:" << std::endl;
+    Basic::Dump(result2, info);
 
-    p = (uint8_t *)&result2.vars[19].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-    puts("");
-
-    CVarInfo info2;
-    info2.AddVariable("w", 0);
-    info2.AddArrayVariable("h", 16, 4);
-    Basic::Print(program2, info);
-
-    State result3 = Execute(program2, input0, info);
-    p = (uint8_t *)&result3.vars[16].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-
-    p = (uint8_t *)&result3.vars[17].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-
-    p = (uint8_t *)&result3.vars[18].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-
-    p = (uint8_t *)&result3.vars[19].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-    puts("");
-
-    for (size_t i = 0; i < input0.vars.size(); ++i)
-    {
-        input0.vars[i].constant = false;
-    }
-    Program program3;
-    State input3;
-    State result4 = ExecuteAndGenerate(program1, input0, info, program3, input3);
-
-    p = (uint8_t *)&result4.vars[16].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-
-    p = (uint8_t *)&result4.vars[17].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-
-    p = (uint8_t *)&result4.vars[18].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-
-    p = (uint8_t *)&result4.vars[19].value;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-    puts("");
-
-    Basic::Print(program3, info);
+    expressions.optimize(input);
+    Basic::Dump(expressions, 0, info);
+    //std::cout << "h[0].0 = " << bool_expressions.expressions.at(bool_expressions.get_bit_index(0, 0))->to_string(info) << std::endl;
 }

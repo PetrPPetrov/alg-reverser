@@ -30,26 +30,18 @@ inline State Execute(const Program& program, State initial_state, const CVarInfo
     work_state.vars = initial_state.vars;
     while (work_state.statement_index < program.statements.size())
     {
-        //std::cout << "=============================" << std::endl;
-        //std::cout << info.GetLabelName(work_state.statement_index) << ":\t" << program.statements[work_state.statement_index]->Print(info) << std::endl;
-        FullState next_state = program.statements.at(work_state.statement_index)->Execute(work_state);
-        //Basic::DumpDiff(next_state, work_state, info);
-        work_state = next_state;
+        work_state = program.statements.at(work_state.statement_index)->Execute(work_state);
     }
     return work_state;
 }
 
-inline State ExecuteAndGenerate(const Program& program, State initial_state, const CVarInfo& info, Program& new_program, State& new_input)
+inline State ExecuteAndGenerateBoolExpressions(const Program& program, State initial_state, const CVarInfo& info, BitExpressionState& expressions)
 {
     FullState work_state;
     work_state.vars = initial_state.vars;
     while (work_state.statement_index < program.statements.size())
     {
-        //std::cout << "=============================" << std::endl;
-        //std::cout << info.GetLabelName(work_state.statement_index) << ":\t" << program.statements[work_state.statement_index]->Print(info) << std::endl;
-        FullState next_state = program.statements.at(work_state.statement_index)->ExecuteAndGenerate(work_state, new_program, new_input);
-        //Basic::DumpDiff(next_state, work_state, info);
-        work_state = next_state;
+        work_state = program.statements.at(work_state.statement_index)->GenerateBitExpressions(work_state, expressions);
     }
     return work_state;
 }

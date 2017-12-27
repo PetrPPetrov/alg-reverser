@@ -45,7 +45,8 @@ class CVar
 
 public:
     CVar(size_t index_): index(index_)
-    {}
+    {
+    }
 
     CVar(State& state, unsigned int initial_value = 0)
     {
@@ -61,6 +62,7 @@ public:
     CVar(State& state, const std::string& name, CVarInfo& var_names, unsigned int initial_value, int array_size)
     {
         Init(state, initial_value);
+        state.vars.back().array_size = array_size;
         var_names.AddArrayVariable(name, index, array_size);
         for (int i = 0; i < array_size - 1; i++)
         {
@@ -121,7 +123,7 @@ struct Nop : public IStatement
 {
     Nop(Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     Nop(size_t line_number);
@@ -131,7 +133,7 @@ struct SetConstant : public IStatement
 {
     SetConstant(const CVar& result, unsigned int value, Program& program, bool hex_ = true);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     SetConstant(size_t line_number, size_t result, unsigned int value_, bool hex_);
@@ -140,23 +142,11 @@ private:
     bool hex;
 };
 
-struct AddRA : public IStatement
-{
-    AddRA(const CVar& result, const CVar& argument, Program& program);
-    FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
-    std::string Print(const Info& info) const;
-private:
-    AddRA(size_t line_number, size_t result, size_t argument);
-    size_t result_index;
-    size_t argument_index;
-};
-
 struct LetRA : public IStatement
 {
     LetRA(const CVar& result, const CVar& argument, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     LetRA(size_t line_number, size_t result, size_t argument);
@@ -166,34 +156,22 @@ private:
 
 struct LetRAI : public IStatement
 {
-    LetRAI(const CVar& result, const CVar& argument, const CVar& index_var, unsigned int max_index, Program& program);
+    LetRAI(const CVar& result, const CVar& argument, const CVar& index_var, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
-    LetRAI(size_t line_number, size_t result, size_t argument, size_t index_var, unsigned int max_index);
+    LetRAI(size_t line_number, size_t result, size_t argument, size_t index_var);
     size_t result_index;
     size_t argument_index;
     size_t index_var_index;
-    unsigned int max_index;
-};
-
-struct IncR : public IStatement
-{
-    IncR(const CVar& result, Program& program);
-    FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
-    std::string Print(const Info& info) const;
-private:
-    IncR(size_t line_number, size_t result);
-    size_t result_index;
 };
 
 struct AndRA : public IStatement
 {
     AndRA(const CVar& result, const CVar& argument, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     AndRA(size_t line_number, size_t result, size_t argument);
@@ -205,7 +183,7 @@ struct OrRA : public IStatement
 {
     OrRA(const CVar& result, const CVar& argument, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     OrRA(size_t line_number, size_t result, size_t argument);
@@ -217,7 +195,7 @@ struct XorRA : public IStatement
 {
     XorRA(const CVar& result, const CVar& argument, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     XorRA(size_t line_number, size_t result, size_t argument);
@@ -229,10 +207,33 @@ struct InverseR : public IStatement
 {
     InverseR(const CVar& result, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     InverseR(size_t line_number, size_t result);
+    size_t result_index;
+};
+
+struct AddRA : public IStatement
+{
+    AddRA(const CVar& result, const CVar& argument, Program& program);
+    FullState Execute(const FullState& state) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
+    std::string Print(const Info& info) const;
+private:
+    AddRA(size_t line_number, size_t result, size_t argument);
+    size_t result_index;
+    size_t argument_index;
+};
+
+struct IncR : public IStatement
+{
+    IncR(const CVar& result, Program& program);
+    FullState Execute(const FullState& state) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
+    std::string Print(const Info& info) const;
+private:
+    IncR(size_t line_number, size_t result);
     size_t result_index;
 };
 
@@ -240,7 +241,7 @@ struct MulRA : public IStatement
 {
     MulRA(const CVar& result, const CVar& argument, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     MulRA(size_t line_number, size_t result, size_t argument);
@@ -252,7 +253,7 @@ struct RestDivideRA : public IStatement
 {
     RestDivideRA(const CVar& result, const CVar& argument, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     RestDivideRA(size_t line_number, size_t result, size_t argument);
@@ -264,7 +265,7 @@ struct LcrRA : public IStatement
 {
     LcrRA(const CVar& result, const CVar& argument, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     LcrRA(size_t line_number, size_t result, size_t argument);
@@ -276,7 +277,7 @@ struct Goto : public IStatement
 {
     Goto(const CLabel& label, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     void SetDestinationLine(size_t destination_line);
     std::string Print(const Info& info) const;
 protected:
@@ -307,7 +308,7 @@ struct IfAMoreBGoto : public Goto
 {
     IfAMoreBGoto(const CVar& a, const CVar& b, const CLabel& destination, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     IfAMoreBGoto(size_t line_number, size_t destination, size_t a, size_t b);
@@ -319,7 +320,7 @@ struct IfALessBGoto : public Goto
 {
     IfALessBGoto(const CVar& a, const CVar& b, const CLabel& destination, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     IfALessBGoto(size_t line_number, size_t destination, size_t a, size_t b);
@@ -331,7 +332,7 @@ struct PrintVar : public IStatement
 {
     PrintVar(const CVar& argument, const std::string& text, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     PrintVar(size_t line_number, size_t argument, const std::string& text_);
@@ -343,7 +344,7 @@ struct PrintText : public IStatement
 {
     PrintText(const std::string& text, Program& program);
     FullState Execute(const FullState& state) const;
-    FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const;
+    FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const;
     std::string Print(const Info& info) const;
 private:
     PrintText(size_t line_number, const std::string& text);
@@ -362,7 +363,7 @@ FullState Nop::Execute(const FullState& state) const
     return result;
 }
 
-FullState Nop::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState Nop::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
     return Execute(state);
 }
@@ -376,57 +377,6 @@ Nop::Nop(size_t line_number) : IStatement(line_number)
 {
 }
 
-AddRA::AddRA(const CVar& result, const CVar& argument, Program& program) : IStatement(0)
-{
-    program.statements.push_back(new AddRA(program.statements.size(), result.GetIndex(), argument.GetIndex()));
-}
-
-FullState AddRA::Execute(const FullState& state) const
-{
-    FullState result(state);
-    result.vars.at(result_index).value += state.vars.at(argument_index).value;
-    ++result.statement_index;
-    return result;
-}
-
-FullState AddRA::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
-{
-    if (state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        return Execute(state);
-    }
-    else if (state.vars.at(result_index).constant && !state.vars.at(argument_index).constant)
-    {
-        SetConstant(CVar(result_index), state.vars.at(result_index).value, program);
-        AddRA(CVar(result_index), CVar(argument_index), program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        SetConstant(CVar(argument_index), state.vars.at(argument_index).value, program);
-        AddRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
-    else
-    {
-        AddRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
-}
-
-std::string AddRA::Print(const Info& info) const
-{
-    return "Let " + info.GetVarName(result_index) + " = " + info.GetVarName(result_index) + " + " + info.GetVarName(argument_index);
-}
-
-AddRA::AddRA(size_t line_number, size_t result, size_t argument) : IStatement(line_number), result_index(result), argument_index(argument)
-{
-    if (result_index == argument_index)
-        throw std::runtime_error("AddRA: result and argument indices are the same");
-}
-
 SetConstant::SetConstant(const CVar& result, unsigned int value, Program& program, bool hex_) : IStatement(0)
 {
     program.statements.push_back(new SetConstant(program.statements.size(), result.GetIndex(), value, hex_));
@@ -436,23 +386,23 @@ FullState SetConstant::Execute(const FullState& state) const
 {
     FullState result(state);
     result.vars.at(result_index).value = value;
+    result.vars.at(result_index).constant = true;
     ++result.statement_index;
     return result;
 }
 
-FullState SetConstant::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState SetConstant::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant)
+    for (unsigned int bit_number = 0; bit_number < 32; ++bit_number)
     {
-        return Execute(state);
+        unsigned int result_bit_index = bool_expressions.get_bit_index(result_index, bit_number);
+        unsigned int mask = 1 << bit_number;
+        bool bit_value = ((value & mask) == mask) ? true : false;
+        ConstBitExpression* const_value = new ConstBitExpression(bit_value);
+        bool_expressions.bit_constants.at(result_bit_index) = true;
+        bool_expressions.bit_expressions.at(result_bit_index).reset(const_value);
     }
-    else
-    {
-        SetConstant(CVar(result_index), value, program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = true;
-        return result;
-    }
+    return Execute(state);
 }
 
 std::string SetConstant::Print(const Info& info) const
@@ -482,35 +432,22 @@ FullState LetRA::Execute(const FullState& state) const
 {
     FullState result(state);
     result.vars.at(result_index).value = state.vars.at(argument_index).value;
+    result.vars.at(result_index).constant = state.vars.at(argument_index).constant;
     ++result.statement_index;
     return result;
 }
 
-FullState LetRA::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState LetRA::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
+    for (unsigned int bit_number = 0; bit_number < 32; ++bit_number)
     {
-        return Execute(state);
+        unsigned int result_bit_index = bool_expressions.get_bit_index(result_index, bit_number);
+        unsigned int source_bit_index = bool_expressions.get_bit_index(argument_index, bit_number);
+        IBitExpression* value = bool_expressions.bit_expressions.at(source_bit_index)->deep_copy();
+        bool_expressions.bit_constants.at(result_bit_index) = bool_expressions.bit_constants.at(source_bit_index);
+        bool_expressions.bit_expressions.at(result_bit_index).reset(value);
     }
-    else if (state.vars.at(result_index).constant && !state.vars.at(argument_index).constant)
-    {
-        LetRA(CVar(result_index), CVar(argument_index), program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        SetConstant(CVar(result_index), state.vars.at(argument_index).value, program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = true;
-        return result;
-    }
-    else
-    {
-        LetRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
+    return Execute(state);
 }
 
 std::string LetRA::Print(const Info& info) const
@@ -524,64 +461,44 @@ LetRA::LetRA(size_t line_number, size_t result, size_t argument) : IStatement(li
         throw std::runtime_error("LetRA: result and argument indices are the same");
 }
 
-LetRAI::LetRAI(const CVar& result, const CVar& argument, const CVar& index_var, unsigned int max_index_, Program& program) : IStatement(0)
+LetRAI::LetRAI(const CVar& result, const CVar& argument, const CVar& index_var, Program& program) : IStatement(0)
 {
-    program.statements.push_back(new LetRAI(program.statements.size(), result.GetIndex(), argument.GetIndex(), index_var.GetIndex(), max_index_));
+    program.statements.push_back(new LetRAI(program.statements.size(), result.GetIndex(), argument.GetIndex(), index_var.GetIndex()));
 }
 
 FullState LetRAI::Execute(const FullState& state) const
 {
     FullState result(state);
     result.vars.at(result_index).value = state.vars.at(argument_index + state.vars.at(index_var_index).value).value;
+    if (state.vars.at(index_var_index).constant && state.vars.at(argument_index + state.vars.at(index_var_index).value).constant)
+    {
+        result.vars.at(result_index).constant = true;
+    }
+    else
+    {
+        result.vars.at(result_index).constant = false;
+    }
     ++result.statement_index;
     return result;
 }
 
-FullState LetRAI::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState LetRAI::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant && state.vars.at(index_var_index).constant && state.vars.at(argument_index + state.vars.at(index_var_index).value).constant)
+    if (state.vars.at(index_var_index).constant)
     {
-        return Execute(state);
+        for (unsigned int bit_number = 0; bit_number < 32; ++bit_number)
+        {
+            unsigned int result_bit_index = bool_expressions.get_bit_index(result_index, bit_number);
+            unsigned int source_bit_index = bool_expressions.get_bit_index(argument_index + state.vars.at(index_var_index).value, bit_number);
+            IBitExpression* value = bool_expressions.bit_expressions.at(source_bit_index)->deep_copy();
+            bool_expressions.bit_constants.at(result_bit_index) = bool_expressions.bit_constants.at(source_bit_index);
+            bool_expressions.bit_expressions.at(result_bit_index).reset(value);
+        }
     }
-    else if (!state.vars.at(result_index).constant && state.vars.at(index_var_index).constant && state.vars.at(argument_index + state.vars.at(index_var_index).value).constant)
-    {
-        FullState result = Execute(state);
-        SetConstant(CVar(result_index), result.vars.at(result_index).value, program);
-        result.vars.at(result_index).constant = true;
-        return result;
-    }
-    else if (state.vars.at(result_index).constant && !state.vars.at(index_var_index).constant)
+    else
     {
         throw std::runtime_error("not implemented");
-        return Execute(state);
-        //for (unsigned int i = 0; i < max_index; ++i)
-        //{
-        //    if (state.vars.at(argument_index + i).constant)
-        //    {
-        //        // generate IF
-        //    }
-        //}
-        //LetRAI(CVar(result_index), CVar(argument_index), CVar(index_var_index), max_index, program);
-        // 2 case
-    }
-    else if (!state.vars.at(result_index).constant && !state.vars.at(index_var_index).constant)
-    {
-        throw std::runtime_error("not implemented");
-        return Execute(state);
-        // 2 case
-    }
-    else if (state.vars.at(result_index).constant && state.vars.at(index_var_index).constant && !state.vars.at(argument_index + state.vars.at(index_var_index).value).constant)
-    {
-        FullState result = Execute(state);
-        LetRA(CVar(result_index), CVar(argument_index + state.vars.at(index_var_index).value), program);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(index_var_index).constant && !state.vars.at(argument_index + state.vars.at(index_var_index).value).constant)
-    {
-        FullState result = Execute(state);
-        LetRA(CVar(result_index), CVar(argument_index + state.vars.at(index_var_index).value), program);
-        return result;
+        //TODO:
     }
     return Execute(state);
 }
@@ -591,45 +508,10 @@ std::string LetRAI::Print(const Info& info) const
     return "Let " + info.GetVarName(result_index) + " = " + info.GetArrayName(argument_index) + "[" + info.GetVarName(index_var_index) + "]";
 }
 
-LetRAI::LetRAI(size_t line_number, size_t result, size_t argument, size_t index_var, unsigned int max_index_) : IStatement(line_number), result_index(result), argument_index(argument), index_var_index(index_var), max_index(max_index_)
+LetRAI::LetRAI(size_t line_number, size_t result, size_t argument, size_t index_var) : IStatement(line_number), result_index(result), argument_index(argument), index_var_index(index_var)
 {
     if (result_index == argument_index)
         throw std::runtime_error("LetRAI: result and argument indices are the same");
-}
-
-IncR::IncR(const CVar& result, Program& program) : IStatement(0)
-{
-    program.statements.push_back(new IncR(program.statements.size(), result.GetIndex()));
-}
-
-FullState IncR::Execute(const FullState& state) const
-{
-    FullState result(state);
-    ++result.vars.at(result_index).value;
-    ++result.statement_index;
-    return result;
-}
-
-FullState IncR::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
-{
-    if (state.vars.at(result_index).constant)
-    {
-        return Execute(state);
-    }
-    else
-    {
-        IncR(CVar(result_index), program);
-        return Execute(state);
-    }
-}
-
-std::string IncR::Print(const Info& info) const
-{
-    return "Inc " + info.GetVarName(result_index);
-}
-
-IncR::IncR(size_t line_number, size_t result) : IStatement(line_number), result_index(result)
-{
 }
 
 AndRA::AndRA(const CVar& result, const CVar& argument, Program& program) : IStatement(0)
@@ -641,46 +523,35 @@ FullState AndRA::Execute(const FullState& state) const
 {
     FullState result(state);
     result.vars.at(result_index).value &= state.vars.at(argument_index).value;
+    if (state.vars.at(result_index).constant && state.vars.at(result_index).value == 0)
+    {
+        result.vars.at(result_index).constant = true; // Bitwise And with 0 (constant) always gives 0 (constant)
+    }
+    else if (state.vars.at(argument_index).constant && state.vars.at(argument_index).value == 0)
+    {
+        result.vars.at(result_index).constant = true; // Bitwise And with 0 (constant) always gives 0 (constant)
+    }
+    else
+    {
+        result.vars.at(result_index).constant = result.vars.at(result_index).constant && result.vars.at(argument_index).constant;
+    }
     ++result.statement_index;
     return result;
 }
 
-FullState AndRA::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState AndRA::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
+    for (unsigned int bit_number = 0; bit_number < 32; ++bit_number)
     {
-        return Execute(state);
+        unsigned int result_bit_index = bool_expressions.get_bit_index(result_index, bit_number);
+        unsigned int source_bit_index = bool_expressions.get_bit_index(argument_index , bit_number);
+        IBitExpression* arg2 = bool_expressions.bit_expressions.at(source_bit_index)->deep_copy();
+        AndBitExpression* and_operation = new AndBitExpression();
+        and_operation->left = bool_expressions.bit_expressions.at(result_bit_index);
+        and_operation->right.reset(arg2);
+        bool_expressions.bit_expressions.at(result_bit_index).reset(and_operation);
     }
-    else if (state.vars.at(result_index).constant && !state.vars.at(argument_index).constant)
-    {
-        if (state.vars.at(result_index).value == 0)
-        {
-            return Execute(state);
-        }
-        SetConstant(CVar(result_index), state.vars.at(result_index).value, program);
-        AndRA(CVar(result_index), CVar(argument_index), program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        if (state.vars.at(argument_index).value == 0)
-        {
-            SetConstant(CVar(result_index), state.vars.at(argument_index).value, program);
-            FullState result = Execute(state);
-            result.vars.at(result_index).constant = true;
-            return result;
-        }
-        SetConstant(CVar(argument_index), state.vars.at(argument_index).value, program);
-        AndRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
-    else
-    {
-        AndRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
+    return Execute(state);
 }
 
 std::string AndRA::Print(const Info& info) const
@@ -701,46 +572,35 @@ FullState OrRA::Execute(const FullState& state) const
 {
     FullState result(state);
     result.vars.at(result_index).value |= state.vars.at(argument_index).value;
+    if (state.vars.at(result_index).constant && state.vars.at(result_index).value == std::numeric_limits<unsigned int>::max())
+    {
+        result.vars.at(result_index).constant = true; // Bitwise Or with 1 (constant) always gives 1 (constant)
+    }
+    else if (state.vars.at(argument_index).constant && state.vars.at(argument_index).value == std::numeric_limits<unsigned int>::max())
+    {
+        result.vars.at(result_index).constant = true; // Bitwise Or with 1 (constant) always gives 1 (constant)
+    }
+    else
+    {
+        result.vars.at(result_index).constant = result.vars.at(result_index).constant && result.vars.at(argument_index).constant;
+    }
     ++result.statement_index;
     return result;
 }
 
-FullState OrRA::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState OrRA::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
+    for (unsigned int bit_number = 0; bit_number < 32; ++bit_number)
     {
-        return Execute(state);
+        unsigned int result_bit_index = bool_expressions.get_bit_index(result_index, bit_number);
+        unsigned int source_bit_index = bool_expressions.get_bit_index(argument_index, bit_number);
+        IBitExpression* arg2 = bool_expressions.bit_expressions.at(source_bit_index)->deep_copy();
+        OrBitExpression* and_operation = new OrBitExpression();
+        and_operation->left = bool_expressions.bit_expressions.at(result_bit_index);
+        and_operation->right.reset(arg2);
+        bool_expressions.bit_expressions.at(result_bit_index).reset(and_operation);
     }
-    else if (state.vars.at(result_index).constant && !state.vars.at(argument_index).constant)
-    {
-        if (state.vars.at(result_index).value == std::numeric_limits<unsigned int>::max())
-        {
-            return Execute(state);
-        }
-        SetConstant(CVar(result_index), state.vars.at(result_index).value, program);
-        OrRA(CVar(result_index), CVar(argument_index), program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        if (state.vars.at(argument_index).value == std::numeric_limits<unsigned int>::max())
-        {
-            SetConstant(CVar(result_index), state.vars.at(argument_index).value, program);
-            FullState result = Execute(state);
-            result.vars.at(result_index).constant = true;
-            return result;
-        }
-        SetConstant(CVar(argument_index), state.vars.at(argument_index).value, program);
-        OrRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
-    else
-    {
-        OrRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
+    return Execute(state);
 }
 
 std::string OrRA::Print(const Info& info) const
@@ -761,35 +621,24 @@ FullState XorRA::Execute(const FullState& state) const
 {
     FullState result(state);
     result.vars.at(result_index).value ^= state.vars.at(argument_index).value;
+    result.vars.at(result_index).constant = result.vars.at(result_index).constant && result.vars.at(argument_index).constant;
     ++result.statement_index;
     return result;
 }
 
-FullState XorRA::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState XorRA::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
+    for (unsigned int bit_number = 0; bit_number < 32; ++bit_number)
     {
-        return Execute(state);
+        unsigned int result_bit_index = bool_expressions.get_bit_index(result_index, bit_number);
+        unsigned int source_bit_index = bool_expressions.get_bit_index(argument_index, bit_number);
+        IBitExpression* arg2 = bool_expressions.bit_expressions.at(source_bit_index)->deep_copy();
+        XorBitExpression* and_operation = new XorBitExpression();
+        and_operation->left = bool_expressions.bit_expressions.at(result_bit_index);
+        and_operation->right.reset(arg2);
+        bool_expressions.bit_expressions.at(result_bit_index).reset(and_operation);
     }
-    else if (state.vars.at(result_index).constant && !state.vars.at(argument_index).constant)
-    {
-        SetConstant(CVar(result_index), state.vars.at(result_index).value, program);
-        XorRA(CVar(result_index), CVar(argument_index), program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        SetConstant(CVar(argument_index), state.vars.at(argument_index).value, program);
-        XorRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
-    else
-    {
-        XorRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
+    return Execute(state);
 }
 
 std::string XorRA::Print(const Info& info) const
@@ -814,17 +663,16 @@ FullState InverseR::Execute(const FullState& state) const
     return result;
 }
 
-FullState InverseR::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState InverseR::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant)
+    for (unsigned int bit_number = 0; bit_number < 32; ++bit_number)
     {
-        return Execute(state);
+        unsigned int result_bit_index = bool_expressions.get_bit_index(result_index, bit_number);
+        NegBitExpression* and_operation = new NegBitExpression();
+        and_operation->argument = bool_expressions.bit_expressions.at(result_bit_index);
+        bool_expressions.bit_expressions.at(result_bit_index).reset(and_operation);
     }
-    else
-    {
-        InverseR(CVar(result_index), program);
-        return Execute(state);
-    }
+    return Execute(state);
 }
 
 std::string InverseR::Print(const Info& info) const
@@ -833,6 +681,68 @@ std::string InverseR::Print(const Info& info) const
 }
 
 InverseR::InverseR(size_t line_number, size_t result) : IStatement(line_number), result_index(result)
+{
+}
+
+AddRA::AddRA(const CVar& result, const CVar& argument, Program& program) : IStatement(0)
+{
+    program.statements.push_back(new AddRA(program.statements.size(), result.GetIndex(), argument.GetIndex()));
+}
+
+FullState AddRA::Execute(const FullState& state) const
+{
+    FullState result(state);
+    result.vars.at(result_index).value += state.vars.at(argument_index).value;
+    if (!state.vars.at(argument_index).constant)
+    {
+        result.vars.at(result_index).constant = false;
+    }
+    ++result.statement_index;
+    return result;
+}
+
+FullState AddRA::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
+{
+    //TODO:
+    return Execute(state);
+}
+
+std::string AddRA::Print(const Info& info) const
+{
+    return "Let " + info.GetVarName(result_index) + " = " + info.GetVarName(result_index) + " + " + info.GetVarName(argument_index);
+}
+
+AddRA::AddRA(size_t line_number, size_t result, size_t argument) : IStatement(line_number), result_index(result), argument_index(argument)
+{
+    if (result_index == argument_index)
+        throw std::runtime_error("AddRA: result and argument indices are the same");
+}
+
+IncR::IncR(const CVar& result, Program& program) : IStatement(0)
+{
+    program.statements.push_back(new IncR(program.statements.size(), result.GetIndex()));
+}
+
+FullState IncR::Execute(const FullState& state) const
+{
+    FullState result(state);
+    ++result.vars.at(result_index).value;
+    ++result.statement_index;
+    return result;
+}
+
+FullState IncR::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
+{
+    //TODO:
+    return Execute(state);
+}
+
+std::string IncR::Print(const Info& info) const
+{
+    return "Inc " + info.GetVarName(result_index);
+}
+
+IncR::IncR(size_t line_number, size_t result) : IStatement(line_number), result_index(result)
 {
 }
 
@@ -845,46 +755,28 @@ FullState MulRA::Execute(const FullState& state) const
 {
     FullState result(state);
     result.vars.at(result_index).value *= state.vars.at(argument_index).value;
+
+    if (state.vars.at(result_index).constant && state.vars.at(result_index).value == 0)
+    {
+        result.vars.at(result_index).constant = true; // Multiplication by 0 (constant) always gives 0 (constant)
+    }
+    else if (state.vars.at(argument_index).constant && state.vars.at(argument_index).value == 0)
+    {
+        result.vars.at(result_index).constant = true; // Multiplication by 0 (constant) always gives 0 (constant)
+    }
+    else
+    {
+        result.vars.at(result_index).constant = result.vars.at(result_index).constant && result.vars.at(argument_index).constant;
+    }
+
     ++result.statement_index;
     return result;
 }
 
-FullState MulRA::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState MulRA::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        return Execute(state);
-    }
-    else if (state.vars.at(result_index).constant && !state.vars.at(argument_index).constant)
-    {
-        if (state.vars.at(result_index).value == 0)
-        {
-            return Execute(state);
-        }
-        SetConstant(CVar(result_index), state.vars.at(result_index).value, program);
-        MulRA(CVar(result_index), CVar(argument_index), program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        if (state.vars.at(argument_index).value == 0)
-        {
-            SetConstant(CVar(result_index), 0, program);
-            FullState result = Execute(state);
-            result.vars.at(result_index).constant = true;
-            return result;
-        }
-        SetConstant(CVar(argument_index), state.vars.at(argument_index).value, program);
-        MulRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
-    else
-    {
-        MulRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
+    // TODO:
+    return Execute(state);
 }
 
 std::string MulRA::Print(const Info& info) const
@@ -905,39 +797,22 @@ FullState RestDivideRA::Execute(const FullState& state) const
 {
     FullState result(state);
     result.vars.at(result_index).value %= state.vars.at(argument_index).value;
+    if (state.vars.at(result_index).constant && (state.vars.at(result_index).value == 0 || state.vars.at(result_index).value == 1))
+    {
+        result.vars.at(result_index).constant = true;
+    }
+    else
+    {
+        result.vars.at(result_index).constant = result.vars.at(result_index).constant && result.vars.at(argument_index).constant;
+    }
     ++result.statement_index;
     return result;
 }
 
-FullState RestDivideRA::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState RestDivideRA::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        return Execute(state);
-    }
-    else if (state.vars.at(result_index).constant && !state.vars.at(argument_index).constant)
-    {
-        if (state.vars.at(result_index).value == 0 || state.vars.at(result_index).value == 1)
-        {
-            return Execute(state);
-        }
-        SetConstant(CVar(result_index), state.vars.at(result_index).value, program);
-        RestDivideRA(CVar(result_index), CVar(argument_index), program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        SetConstant(CVar(argument_index), state.vars.at(argument_index).value, program);
-        RestDivideRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
-    else
-    {
-        RestDivideRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
+    // TODO:
+    return Execute(state);
 }
 
 std::string RestDivideRA::Print(const Info& info) const
@@ -960,35 +835,15 @@ FullState LcrRA::Execute(const FullState& state) const
     const unsigned int x = result.vars.at(result_index).value;
     const unsigned int c = result.vars.at(argument_index).value;
     result.vars.at(result_index).value = (x << c) | (x >> (32 - c));
+    result.vars.at(result_index).constant = result.vars.at(result_index).constant && result.vars.at(argument_index).constant;
     ++result.statement_index;
     return result;
 }
 
-FullState LcrRA::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState LcrRA::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        return Execute(state);
-    }
-    else if (state.vars.at(result_index).constant && !state.vars.at(argument_index).constant)
-    {
-        SetConstant(CVar(result_index), state.vars.at(result_index).value, program);
-        LcrRA(CVar(result_index), CVar(argument_index), program);
-        FullState result = Execute(state);
-        result.vars.at(result_index).constant = false;
-        return result;
-    }
-    else if (!state.vars.at(result_index).constant && state.vars.at(argument_index).constant)
-    {
-        SetConstant(CVar(argument_index), state.vars.at(argument_index).value, program);
-        LcrRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
-    else
-    {
-        LcrRA(CVar(result_index), CVar(argument_index), program);
-        return Execute(state);
-    }
+    // TODO:
+    return Execute(state);
 }
 
 std::string LcrRA::Print(const Info& info) const
@@ -1012,7 +867,7 @@ FullState Goto::Execute(const FullState& state) const
     return result;
 }
 
-FullState Goto::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState Goto::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
     return Execute(state);
 }
@@ -1055,21 +910,10 @@ FullState IfAMoreBGoto::Execute(const FullState& state) const
     return result;
 }
 
-FullState IfAMoreBGoto::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState IfAMoreBGoto::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(a_index).constant && state.vars.at(b_index).constant)
-    {
-        return Execute(state);
-    }
-    else if (state.vars.at(a_index).constant && state.vars.at(a_index).value == 0)
-    {
-        return Execute(state);
-    }
-    else
-    {
-        IfAMoreBGoto(CVar(a_index), CVar(b_index), CLabel(GetDestinationIndex()), program);
-        return Execute(state);
-    }
+    //TODO:
+    return Execute(state);
 }
 
 std::string IfAMoreBGoto::Print(const Info& info) const
@@ -1102,21 +946,10 @@ FullState IfALessBGoto::IfALessBGoto::Execute(const FullState& state) const
     return result;
 }
 
-FullState IfALessBGoto::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState IfALessBGoto::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(a_index).constant && state.vars.at(b_index).constant)
-    {
-        return Execute(state);
-    }
-    else if (state.vars.at(b_index).constant && state.vars.at(b_index).value == 0)
-    {
-        return Execute(state);
-    }
-    else
-    {
-        IfALessBGoto(CVar(a_index), CVar(b_index), CLabel(GetDestinationIndex()), program);
-        return Execute(state);
-    }
+    //TODO:
+    return Execute(state);
 }
 
 std::string IfALessBGoto::Print(const Info& info) const
@@ -1143,20 +976,9 @@ FullState PrintVar::Execute(const FullState& state) const
     return result;
 }
 
-FullState PrintVar::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState PrintVar::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    if (state.vars.at(argument_index).constant)
-    {
-        std::stringstream ss;
-        ss << "Var " << text << ": " << std::to_string(state.vars.at(argument_index).value);
-        PrintText(ss.str(), program);
-        return Execute(state);
-    }
-    else
-    {
-        PrintVar(CVar(argument_index), text, program);
-        return Execute(state);
-    }
+    return Execute(state);
 }
 
 std::string PrintVar::Print(const Info& info) const
@@ -1181,9 +1003,8 @@ FullState PrintText::Execute(const FullState& state) const
     return result;
 }
 
-FullState PrintText::ExecuteAndGenerate(const FullState& state, Program& program, State& input) const
+FullState PrintText::GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const
 {
-    PrintText(text, program);
     return Execute(state);
 }
 
@@ -1221,6 +1042,15 @@ namespace Basic
         for (size_t i = 0; i < state.vars.size(); ++i)
         {
             std::cout << "Var " << info.GetVarName(i) << ": " << state.vars[i].value << std::endl;
+        }
+    }
+
+    void Dump(const BitExpressionState& expressions, size_t var_index, const CVarInfo& info)
+    {
+        std::map<size_t, std::string> dummy;
+        for (unsigned int i = 0; i < 32; ++i)
+        {
+            std::cout << "Var " << info.GetVarName(var_index) << "." << i << " = " << expressions.bit_expressions.at(expressions.get_bit_index(var_index, i))->to_string(info) << std::endl;
         }
     }
 

@@ -1,136 +1,120 @@
 /*
- * AlgReverser reverses algorithms
+ * HashReverser reverses hashes
  * Copyright (C) 2017 Petr Petrovich Petrov
  *
- * This file is part of AlgReverser.
+ * This file is part of HashReverser.
  *
- * AlgReverser is free software: you can redistribute it and/or modify
+ * HashReverser is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AlgReverser is distributed in the hope that it will be useful,
+ * HashReverser is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with AlgReverser.  If not, see <http://www.gnu.org/licenses/>.
+ * along with HashReverser.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 #include <vector>
+#include <memory>
 #include <string>
 
-struct Var
-{
-    unsigned int value;
-    bool constant;
+#include "VarInfo.h"
 
-    Var() : value(0), constant(true)
-    {}
+struct IBitExpression;
+
+
+
+struct BitExpressionStates
+{
+    typedef uint32_t work_type;
+
+    size_t get_bit_index(size_t var_index, size_t bit_number) const
+    {
+        return var_index * sizeof(work_type) + bit_number;
+    }
+
+    size_t AddVariable(const std::string& name, bool constant, work_type initial_value = 0)
+    {
+        variables.push_back(initial_value);
+        names.push_back(name);
+        array_sizes.push_back(0);
+        for (size_t i = 0; i < sizeof(work_type); ++i)
+        {
+            bit_constants.push_back(constant);
+            if (constant)
+            {
+
+            }
+            else
+            {
+
+            }
+            VariableBitExpression* new_value = new VariableBitExpression();
+            new_value->var_index = i;
+            new_value->bit_number = b;
+            bit_expressions.push_back(std::shared_ptr<IBitExpression>(new_value));
+        }
+    }
+
+    void Optimize()
+    {
+        for (size_t i = 0; i < bit_expressions.size(); ++i)
+        {
+            bit_expressions[i]->optimize(bit_expressions[i], input);
+        }
+    }
+private:
+    std::vector<work_type> variables;
+    std::vector<std::string> names;
+    std::vector<size_t> array_sizes;
+    std::vector<bool> bit_constants;
+    std::vector<std::shared_ptr<IBitExpression> > bit_expressions;
 };
 
-struct State
+struct BitExpressionState : public State
 {
-    std::vector<Var> vars;
-};
+    std::vector<bool> bit_constants;
+    std::vector<std::shared_ptr<IBitExpression> > bit_expressions;
 
-struct FullState : public State
-{
-    size_t statement_index;
-
-    FullState() : statement_index(0)
-    {}
-};
-
-struct Info
-{
-    virtual std::string GetVarName(size_t index) const = 0;
-    virtual std::string GetArrayName(size_t index) const = 0;
-    virtual std::string GetLabelName(size_t index) const = 0;
-};
-
-class CVarInfo : public Info
-{
-    struct ObjectInfo
+    unsigned int get_bit_index(size_t var_index, unsigned int bit_number) const
     {
-        std::string name;
-        size_t index;
-        int array_size;
-    };
-    std::vector<ObjectInfo> arrays;
-    std::vector<ObjectInfo> variables;
-    std::vector<ObjectInfo> labels;
-public:
-    bool unnamed_labels;
-
-    CVarInfo() : unnamed_labels(false)
-    {}
-
-    void AddArrayVariable(const std::string& name, size_t index, int array_size)
-    {
-        ObjectInfo new_item;
-        new_item.name = name;
-        new_item.index = index;
-        new_item.array_size = array_size;
-        arrays.push_back(new_item);
+        return static_cast<unsigned int>(var_index) * 32 + bit_number;
     }
-    void AddVariable(const std::string& name, size_t index)
+
+    BitExpressionState(const State& state, const std::vector<bool>& var_is_const)
     {
-        ObjectInfo new_item;
-        new_item.name = name;
-        new_item.index = index;
-        new_item.array_size = 1;
-        variables.push_back(new_item);
+        bit_constants.clear();
+        bit_constants.reserve(state.vars.size() * 32);
+        bit_expressions.clear();
+        bit_expressions.reserve(state.vars.size() * 32);
+        for (size_t i = 0; i < state.vars.size(); ++i)
+        {
+            for (unsigned int b = 0; b < 32; ++b)
+            {
+                bit_constants.push_back(var_is_const.at(i));
+                VariableBitExpression* new_value = new VariableBitExpression();
+                new_value->var_index = i;
+                new_value->bit_number = b;
+                bit_expressions.push_back(std::shared_ptr<IBitExpression>(new_value));
+            }
+        }
     }
-    void AddLabel(const std::string& name, size_t index)
+
+    void optimize(const State& input)
     {
-        ObjectInfo new_item;
-        new_item.name = name;
-        new_item.index = index;
-        new_item.array_size = 1;
-        labels.push_back(new_item);
-    }
-    std::string GetVarName(size_t index) const
-    {
-        for (size_t i = 0; i < arrays.size(); ++i)
+        for (size_t i = 0; i < bit_expressions.size(); ++i)
         {
-            if (index >= arrays[i].index && index < arrays[i].index + arrays[i].array_size)
-                return arrays[i].name + "[" + std::to_string(index - arrays[i].index) + "]";
+            bit_expressions[i]->optimize(bit_expressions[i], input);
         }
-        for (size_t i = 0; i < variables.size(); ++i)
-        {
-            if (index == variables[i].index)
-                return variables[i].name;
-        }
-        return "V" + std::to_string(index) + "";
-    }
-    std::string GetArrayName(size_t index) const
-    {
-        for (size_t i = 0; i < arrays.size(); ++i)
-        {
-            if (index >= arrays[i].index && index < arrays[i].index + arrays[i].array_size)
-                return arrays[i].name;
-        }
-        return "V" + std::to_string(index) + "";
-    }
-    std::string GetLabelName(size_t index) const
-    {
-        std::string result;
-        for (size_t i = 0; i < labels.size(); ++i)
-        {
-            if (index == labels[i].index)
-                result = labels[i].name;
-        }
-        if (result.empty() && unnamed_labels)
-        {
-            result = std::to_string(index);
-        }
-        return result;
     }
 };
 
@@ -143,16 +127,17 @@ struct IStatement
         return line_number;
     }
 
-    virtual ~IStatement() {}
+    virtual ~IStatement()
+    {
+    }
     virtual FullState Execute(const FullState& state) const = 0;
-    virtual FullState ExecuteAndGenerate(const FullState& state, Program& program, State& input) const = 0;
-    //virtual size_t GetPreviousStateCount(const FullState& state) const = 0;
-    //virtual FullState GetPreviousState(size_t index, const FullState& state) const = 0;
+    virtual FullState GenerateBitExpressions(const FullState& state, BitExpressionState& bool_expressions) const = 0;
     virtual std::string Print(const Info& info) const = 0;
 
 protected:
     IStatement(size_t line_number_) : line_number(line_number_)
-    {}
+    {
+    }
 
 private:
     size_t line_number;
@@ -171,5 +156,3 @@ struct Program
         }
     }
 };
-
-

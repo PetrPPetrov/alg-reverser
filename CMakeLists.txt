@@ -25,9 +25,13 @@ cmake_minimum_required(VERSION 2.8)
 add_executable(alg_reverser
   ${alg_reverser_SOURCE_DIR}/src/Common.h
   ${alg_reverser_SOURCE_DIR}/src/Basic.h
+  ${alg_reverser_SOURCE_DIR}/src/BitExpressions.h
+  ${alg_reverser_SOURCE_DIR}/src/BitExpressions.cpp
+  ${alg_reverser_SOURCE_DIR}/src/Program.h
+  ${alg_reverser_SOURCE_DIR}/src/Program.cpp
   ${alg_reverser_SOURCE_DIR}/src/Execute.h
-  ${alg_reverser_SOURCE_DIR}/src/ReverseExecute.h
   ${alg_reverser_SOURCE_DIR}/src/MD5.h
   ${alg_reverser_SOURCE_DIR}/src/Utility.h
+  ${alg_reverser_SOURCE_DIR}/src/VarInfo.h
   ${alg_reverser_SOURCE_DIR}/src/Main.cpp
 )

@@ -24,7 +24,6 @@
 #include "Common.h"
 #include "Basic.h"
 #include "Execute.h"
-#include "ReverseExecute.h"
 #include "Utility.h"
 #include "MD5.h"
 
@@ -32,7 +31,7 @@ int main()
 {
     try
     {
-        MD5Experiment();
+        SmallExperiment();
     }
     catch (const std::exception& error)
     {
