@@ -1,21 +1,21 @@
 /*
- * AlgReverser reverses algorithms
+ * HashReverser reverses hashes
  * Copyright (C) 2017 Petr Petrovich Petrov
  *
- * This file is part of AlgReverser.
+ * This file is part of HashReverser.
  *
- * AlgReverser is free software: you can redistribute it and/or modify
+ * HashReverser is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * AlgReverser is distributed in the hope that it will be useful,
+ * HashReverser is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with AlgReverser.  If not, see <http://www.gnu.org/licenses/>.
+ * along with HashReverser.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -24,13 +24,55 @@
 #include <iostream>
 #include <string>
 
-#include "Common.h"
+#include "BitExpressions.h"
+#include "Program.h"
 
-void Dump(const std::string& text, const State& state)
+inline void Print(const Program& program, const FullState& info)
 {
-    std::cout << text << std::endl;
-    for (size_t i = 0; i < state.vars.size(); ++i)
+    for (size_t index = 0; index < program.statements.size(); ++index)
     {
-        std::cout << "Var" << i << ": " << state.vars[i].value << std::endl;
+        std::cout << program.statements[index]->Print(info) << std::endl;
+    }
+}
+
+inline void PrintInput(const BitExpressionStates& state)
+{
+    for (size_t var_index = 0; var_index < state.GetVariableCount(); ++var_index)
+    {
+        std::cout << "Var " << state.GetVarName(var_index) << ": " << state.GetInputVarValue(var_index) << std::endl;
+    }
+}
+
+inline void PrintOutput(const BitExpressionStates& state)
+{
+    for (size_t var_index = 0; var_index < state.GetVariableCount(); ++var_index)
+    {
+        std::cout << "Var " << state.GetVarName(var_index) << ": " << state.GetOutputVarValue(var_index) << std::endl;
+    }
+}
+
+inline void PrintCurrentVar(const BitExpressionStates& state, size_t var_index)
+{
+    for (size_t bit_number = 0; bit_number < BitExpressionStates::bit_count; ++bit_number)
+    {
+        std::string value;
+        size_t bit_index = BitExpressionStates::GetBitIndex(var_index, bit_number);
+        if (state.GetCurrentBitConstant(bit_index))
+        {
+            value = state.GetCurrentBitValue(bit_index) ? "1" : "0";
+        }
+        else
+        {
+            value = state.GetBitExpression(bit_index)->ToString(state);
+        }
+        std::cout << "Var " << state.GetVarName(var_index) << "." << bit_number << " = " << value << std::endl;
+    }
+}
+
+inline void PrintCurrent(const BitExpressionStates& state)
+{
+    for (size_t var_index = 0; var_index < state.GetVariableCount(); ++var_index)
+    {
+        PrintCurrentVar(state, var_index);
     }
 }

@@ -23,8 +23,6 @@ project(alg_reverser)
 cmake_minimum_required(VERSION 2.8)
 
 add_executable(alg_reverser
-  ${alg_reverser_SOURCE_DIR}/src/Common.h
-  ${alg_reverser_SOURCE_DIR}/src/Basic.h
   ${alg_reverser_SOURCE_DIR}/src/BitExpressions.h
   ${alg_reverser_SOURCE_DIR}/src/BitExpressions.cpp
   ${alg_reverser_SOURCE_DIR}/src/Program.h

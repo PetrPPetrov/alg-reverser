@@ -23,7 +23,7 @@
 
 size_t BitExpressionStates::GetBitIndex(size_t var_index, size_t bit_number)
 {
-    return var_index * sizeof(work_type) + bit_number;
+    return var_index * bit_count + bit_number;
 }
 
 bool BitExpressionStates::ExtractBit(work_type value, size_t bit_number)
@@ -67,29 +67,22 @@ std::string BitExpressionStates::GetVarName(size_t var_index) const
 
 size_t BitExpressionStates::AddVariable(const std::string& name, bool constant, work_type initial_value)
 {
-    const size_t var_index = variables.size();
-    variables.push_back(initial_value);
+    const size_t var_index = input_variables.size();
+    input_variables.push_back(initial_value);
     array_sizes.push_back(0);
     array_starts.push_back(0);
     names.push_back(name);
-    for (size_t bit_number = 0; bit_number < sizeof(work_type) * 8; ++bit_number)
+    for (size_t bit_number = 0; bit_number < bit_count; ++bit_number)
     {
-        bit_constants.push_back(constant);
-        if (constant)
-        {
-            bit_expressions.push_back(std::make_shared<ConstBitExpression>(ExtractBit(initial_value, bit_number)));
-        }
-        else
-        {
-            bit_expressions.push_back(std::make_shared<VariableBitExpression>(var_index, bit_number));
-        }
+        input_bit_constants.push_back(constant);
+        bit_expressions.push_back(std::make_shared<VariableBitExpression>(var_index, bit_number));
     }
     return var_index;
 }
 
 size_t BitExpressionStates::AddArray(const std::string& name, bool constant, size_t size, work_type initial_value)
 {
-    const size_t start_index = variables.size();
+    const size_t start_index = input_variables.size();
     for (size_t i = 0; i < size; ++i)
     {
         AddVariable(name, constant, initial_value);
@@ -99,29 +92,26 @@ size_t BitExpressionStates::AddArray(const std::string& name, bool constant, siz
     return start_index;
 }
 
-void BitExpressionStates::SetVarConstant(size_t var_index, bool constant)
+size_t BitExpressionStates::GetVariableCount() const
 {
-    for (size_t bit_number = 0; bit_number < sizeof(work_type) * 8; ++bit_number)
+    return input_variables.size();
+}
+
+void BitExpressionStates::SetInputVarConstant(size_t var_index, bool constant)
+{
+    for (size_t bit_number = 0; bit_number < bit_count; ++bit_number)
     {
         const size_t bit_index = GetBitIndex(var_index, bit_number);
-        bit_constants.at(bit_index) = constant;
-        if (constant)
-        {
-            bit_expressions.at(bit_index) = std::make_shared<ConstBitExpression>(ExtractBit(variables.at(var_index), bit_number));
-        }
-        else
-        {
-            bit_expressions.at(bit_index) = std::make_shared<VariableBitExpression>(var_index, bit_number);
-        }
+        input_bit_constants.at(bit_index) = constant;
     }
 }
 
-bool BitExpressionStates::GetVarConstant(size_t var_index) const
+bool BitExpressionStates::GetInputVarConstant(size_t var_index) const
 {
-    for (size_t bit_number = 0; bit_number < sizeof(work_type) * 8; ++bit_number)
+    for (size_t bit_number = 0; bit_number < bit_count; ++bit_number)
     {
         const size_t bit_index = GetBitIndex(var_index, bit_number);
-        if (!bit_constants.at(bit_index))
+        if (!input_bit_constants.at(bit_index))
         {
             return false;
         }
@@ -129,57 +119,100 @@ bool BitExpressionStates::GetVarConstant(size_t var_index) const
     return true;
 }
 
-void BitExpressionStates::SetVarValue(size_t var_index, BitExpressionStates::work_type value)
+void BitExpressionStates::SetInputVarValue(size_t var_index, BitExpressionStates::work_type value)
 {
-    variables.at(var_index) = value;
+    input_variables.at(var_index) = value;
 }
 
-BitExpressionStates::work_type BitExpressionStates::GetVarValue(size_t var_index) const
+BitExpressionStates::work_type BitExpressionStates::GetInputVarValue(size_t var_index) const
 {
-    return variables.at(var_index);
+    return input_variables.at(var_index);
 }
 
-void BitExpressionStates::SetBitConstant(size_t bit_index, bool constant)
+void BitExpressionStates::SetInputBitConstant(size_t bit_index, bool constant)
 {
-    const size_t var_index = bit_index / (sizeof(work_type) * 8);
-    const size_t bit_number = bit_index % (sizeof(work_type) * 8);
-
-    bit_constants.at(bit_index) = constant;
-    if (constant)
-    {
-        bit_expressions.at(bit_index) = std::make_shared<ConstBitExpression>(ExtractBit(variables.at(var_index), bit_number));
-    }
-    else
-    {
-        bit_expressions.at(bit_index) = std::make_shared<VariableBitExpression>(var_index, bit_number);
-    }
+    input_bit_constants.at(bit_index) = constant;
 }
 
-bool BitExpressionStates::GetBitConstant(size_t bit_index) const
+bool BitExpressionStates::GetInputBitConstant(size_t bit_index) const
 {
-    return bit_constants.at(bit_index);
+    return input_bit_constants.at(bit_index);
 }
 
-void BitExpressionStates::SetBitValue(size_t bit_index, bool value)
+void BitExpressionStates::SetInputBitValue(size_t bit_index, bool value)
 {
-    const size_t var_index = bit_index / (sizeof(work_type) * 8);
-    const size_t bit_number = bit_index % (sizeof(work_type) * 8);
+    const size_t var_index = bit_index / bit_count;
+    const size_t bit_number = bit_index % bit_count;
     const work_type mask = 1 << bit_number;
     if (value)
     {
-        variables.at(var_index) |= mask;
+        input_variables.at(var_index) |= mask;
     }
-    else if (ExtractBit(variables.at(var_index), bit_number))
+    else if (ExtractBit(input_variables.at(var_index), bit_number))
     {
-        variables.at(var_index) ^= mask;
+        input_variables.at(var_index) ^= mask;
     }
 }
 
-bool BitExpressionStates::GetBitValue(size_t bit_index) const
+bool BitExpressionStates::GetInputBitValue(size_t bit_index) const
 {
-    const size_t var_index = bit_index / (sizeof(work_type) * 8);
-    const size_t bit_number = bit_index % (sizeof(work_type) * 8);
-    return ExtractBit(variables.at(var_index), bit_number);
+    const size_t var_index = bit_index / bit_count;
+    const size_t bit_number = bit_index % bit_count;
+    return ExtractBit(input_variables.at(var_index), bit_number);
+}
+
+void BitExpressionStates::SetBitExpression(size_t bit_index, const std::shared_ptr<IBitExpression>& expresssion)
+{
+    bit_expressions.at(bit_index) = expresssion;
+}
+
+std::shared_ptr<IBitExpression> BitExpressionStates::GetBitExpression(size_t bit_index) const
+{
+    return bit_expressions.at(bit_index);
+}
+
+bool BitExpressionStates::GetCurrentBitConstant(size_t bit_index) const
+{
+    return bit_expressions.at(bit_index)->Constant(*this);
+}
+
+bool BitExpressionStates::GetCurrentBitValue(size_t bit_index) const
+{
+    return bit_expressions.at(bit_index)->Calculate(*this);
+}
+
+bool BitExpressionStates::GetCurrentVarConstant(size_t var_index) const
+{
+    for (size_t bit_number = 0; bit_number < bit_count; ++bit_number)
+    {
+        const size_t bit_index = GetBitIndex(var_index, bit_number);
+        if (!bit_expressions.at(bit_index)->Constant(*this))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+BitExpressionStates::work_type BitExpressionStates::GetCurrentVarValue(size_t var_index) const
+{
+    if (!GetCurrentVarConstant(var_index))
+        throw std::runtime_error("BitExpressionStates::GetCurrentVarValue(): variable is not constant");
+
+    return GetOutputVarValue(var_index);
+}
+
+BitExpressionStates::work_type BitExpressionStates::GetOutputVarValue(size_t var_index) const
+{
+    work_type result = 0;
+    for (size_t bit_number = 0; bit_number < bit_count; ++bit_number)
+    {
+        const size_t bit_index = GetBitIndex(var_index, bit_number);
+        const work_type bit_value = bit_expressions.at(bit_index)->Calculate(*this) ? 1 : 0;
+        const work_type mask = bit_value << bit_number;
+        result |= mask;
+    }
+    return result;
 }
 
 void BitExpressionStates::Optimize()
@@ -190,9 +223,9 @@ void BitExpressionStates::Optimize()
     }
 }
 
-void BitExpressionStates::CopyVarValues(const BitExpressionStates& from)
+void BitExpressionStates::CopyInputVarValues(const BitExpressionStates& from)
 {
-    variables = from.variables;
+    input_variables = from.input_variables;
 }
 
 void BitExpressionStates::CopyNames(const BitExpressionStates& from)
@@ -202,9 +235,9 @@ void BitExpressionStates::CopyNames(const BitExpressionStates& from)
     names = from.names;
 }
 
-void BitExpressionStates::CopyConstants(const BitExpressionStates& from)
+void BitExpressionStates::CopyInputConstants(const BitExpressionStates& from)
 {
-    bit_constants = from.bit_constants;
+    input_bit_constants = from.input_bit_constants;
 }
 
 void BitExpressionStates::CopyBitExpressions(const BitExpressionStates& from)
@@ -218,9 +251,9 @@ void BitExpressionStates::CopyBitExpressions(const BitExpressionStates& from)
 
 void BitExpressionStates::Copy(const BitExpressionStates& from)
 {
-    CopyVarValues(from);
+    CopyInputVarValues(from);
     CopyNames(from);
-    CopyConstants(from);
+    CopyInputConstants(from);
     CopyBitExpressions(from);
 }
 
@@ -278,12 +311,12 @@ std::string VariableBitExpression::ToString(const BitExpressionStates& info) con
 
 bool VariableBitExpression::Constant(const BitExpressionStates& input) const
 {
-    return input.GetBitConstant(BitExpressionStates::GetBitIndex(var_index, bit_number));
+    return input.GetInputBitConstant(BitExpressionStates::GetBitIndex(var_index, bit_number));
 }
 
 bool VariableBitExpression::Calculate(const BitExpressionStates& input) const
 {
-    return input.GetBitValue(BitExpressionStates::GetBitIndex(var_index, bit_number));
+    return input.GetInputBitValue(BitExpressionStates::GetBitIndex(var_index, bit_number));
 }
 
 int VariableBitExpression::Priority() const

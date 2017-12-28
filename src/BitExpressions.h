@@ -32,6 +32,7 @@ struct IBitExpression;
 struct BitExpressionStates
 {
     typedef uint32_t work_type;
+    static const size_t bit_count = sizeof(BitExpressionStates::work_type) * 8;
 
     static size_t GetBitIndex(size_t var_index, size_t bit_number);
     static bool ExtractBit(work_type value, size_t bit_number);
@@ -42,30 +43,40 @@ struct BitExpressionStates
 
     size_t AddVariable(const std::string& name, bool constant, work_type initial_value = 0);
     size_t AddArray(const std::string& name, bool constant, size_t size, work_type initial_value = 0);
+    size_t GetVariableCount() const;
 
-    void SetVarConstant(size_t var_index, bool constant);
-    bool GetVarConstant(size_t var_index) const;
-    void SetVarValue(size_t var_index, work_type value);
-    work_type GetVarValue(size_t var_index) const;
+    void SetInputVarConstant(size_t var_index, bool constant);
+    bool GetInputVarConstant(size_t var_index) const;
+    void SetInputVarValue(size_t var_index, work_type value);
+    work_type GetInputVarValue(size_t var_index) const;
 
-    void SetBitConstant(size_t bit_index, bool constant);
-    bool GetBitConstant(size_t bit_index) const;
-    void SetBitValue(size_t bit_index, bool value);
-    bool GetBitValue(size_t bit_index) const;
+    void SetInputBitConstant(size_t bit_index, bool constant);
+    bool GetInputBitConstant(size_t bit_index) const;
+    void SetInputBitValue(size_t bit_index, bool value);
+    bool GetInputBitValue(size_t bit_index) const;
+
+    void SetBitExpression(size_t bit_index, const std::shared_ptr<IBitExpression>& expresssion);
+    std::shared_ptr<IBitExpression> GetBitExpression(size_t bit_index) const;
+
+    bool GetCurrentBitConstant(size_t bit_index) const;
+    bool GetCurrentBitValue(size_t bit_index) const;
+    bool GetCurrentVarConstant(size_t var_index) const;
+    work_type GetCurrentVarValue(size_t var_index) const;
+    work_type GetOutputVarValue(size_t var_index) const;
 
     void Optimize();
 
-    void CopyVarValues(const BitExpressionStates& from);
+    void CopyInputVarValues(const BitExpressionStates& from);
     void CopyNames(const BitExpressionStates& from);
-    void CopyConstants(const BitExpressionStates& from);
+    void CopyInputConstants(const BitExpressionStates& from);
     void CopyBitExpressions(const BitExpressionStates& from);
     void Copy(const BitExpressionStates& from);
 private:
-    std::vector<work_type> variables;
+    std::vector<work_type> input_variables;
     std::vector<size_t> array_sizes;
     std::vector<size_t> array_starts;
     std::vector<std::string> names;
-    std::vector<bool> bit_constants;
+    std::vector<bool> input_bit_constants;
     std::vector<std::shared_ptr<IBitExpression> > bit_expressions;
 };
 
