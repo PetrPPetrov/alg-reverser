@@ -29,7 +29,8 @@ int main()
 {
     try
     {
-        SmallExperiment();
+        //SmallExperiment();
+        MD5Experiment();
     }
     catch (const std::exception& error)
     {

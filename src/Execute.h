@@ -23,6 +23,8 @@
 
 #include "BitExpressions.h"
 #include "Program.h"
+#include "Utility.h"
+//#include <Windows.h>
 
 inline void Execute(const Program& program, const BitExpressionStates& initial_state, BitExpressionStates& output_state)
 {
@@ -30,7 +32,17 @@ inline void Execute(const Program& program, const BitExpressionStates& initial_s
     work_state.Copy(initial_state);
     while (work_state.statement_index < program.statements.size())
     {
+        std::cout << program.statements.at(work_state.statement_index)->Print(work_state) << std::endl;
+        std::cout << "run..." << std::endl;
         program.statements.at(work_state.statement_index)->Execute(work_state);
+
+        std::cout << "optimize..." << std::endl;
+        work_state.Optimize();
+        std::cout << "print..." << std::endl;
+        //std::cout << "Bit expressions" << std::endl;
+        PrintCurrent(work_state);
+        std::cout << std::endl;
+        //Sleep(250);
     }
     output_state.Copy(work_state);
 }

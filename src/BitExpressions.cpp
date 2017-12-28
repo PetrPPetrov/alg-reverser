@@ -106,7 +106,7 @@ void BitExpressionStates::SetInputVarConstant(size_t var_index, bool constant)
     }
 }
 
-bool BitExpressionStates::GetInputVarConstant(size_t var_index) const
+bool BitExpressionStates::IsInputVarConstant(size_t var_index) const
 {
     for (size_t bit_number = 0; bit_number < bit_count; ++bit_number)
     {
@@ -134,7 +134,7 @@ void BitExpressionStates::SetInputBitConstant(size_t bit_index, bool constant)
     input_bit_constants.at(bit_index) = constant;
 }
 
-bool BitExpressionStates::GetInputBitConstant(size_t bit_index) const
+bool BitExpressionStates::IsInputBitConstant(size_t bit_index) const
 {
     return input_bit_constants.at(bit_index);
 }
@@ -171,7 +171,7 @@ std::shared_ptr<IBitExpression> BitExpressionStates::GetBitExpression(size_t bit
     return bit_expressions.at(bit_index);
 }
 
-bool BitExpressionStates::GetCurrentBitConstant(size_t bit_index) const
+bool BitExpressionStates::IsCurrentBitConstant(size_t bit_index) const
 {
     return bit_expressions.at(bit_index)->Constant(*this);
 }
@@ -181,7 +181,7 @@ bool BitExpressionStates::GetCurrentBitValue(size_t bit_index) const
     return bit_expressions.at(bit_index)->Calculate(*this);
 }
 
-bool BitExpressionStates::GetCurrentVarConstant(size_t var_index) const
+bool BitExpressionStates::IsCurrentVarConstant(size_t var_index) const
 {
     for (size_t bit_number = 0; bit_number < bit_count; ++bit_number)
     {
@@ -196,7 +196,7 @@ bool BitExpressionStates::GetCurrentVarConstant(size_t var_index) const
 
 BitExpressionStates::work_type BitExpressionStates::GetCurrentVarValue(size_t var_index) const
 {
-    if (!GetCurrentVarConstant(var_index))
+    if (!IsCurrentVarConstant(var_index))
         throw std::runtime_error("BitExpressionStates::GetCurrentVarValue(): variable is not constant");
 
     return GetOutputVarValue(var_index);
@@ -311,7 +311,7 @@ std::string VariableBitExpression::ToString(const BitExpressionStates& info) con
 
 bool VariableBitExpression::Constant(const BitExpressionStates& input) const
 {
-    return input.GetInputBitConstant(BitExpressionStates::GetBitIndex(var_index, bit_number));
+    return input.IsInputBitConstant(BitExpressionStates::GetBitIndex(var_index, bit_number));
 }
 
 bool VariableBitExpression::Calculate(const BitExpressionStates& input) const
@@ -343,7 +343,7 @@ void VariableBitExpression::Optimize(std::shared_ptr<IBitExpression>& output, co
 {
     if (Constant(input))
     {
-        output = std::make_shared<ConstBitExpression>(Calculate(input));
+        output = const_bool(Calculate(input));
     }
 }
 
@@ -395,10 +395,24 @@ bool NegBitExpression::Equals(const std::shared_ptr<IBitExpression>& other_) con
 
 void NegBitExpression::Optimize(std::shared_ptr<IBitExpression>& output, const BitExpressionStates& input)
 {
+    argument->Optimize(argument, input);
     if (Constant(input))
     {
         output = std::make_shared<ConstBitExpression>(Calculate(input));
     }
+    else
+    {
+        NegBitExpression* argument2 = dynamic_cast<NegBitExpression*>(argument.get());
+        if (argument2)
+        {
+            output = argument2->argument;
+        }
+    }
+}
+
+std::shared_ptr<IBitExpression> NegBitExpression::GetArgument() const
+{
+    return argument;
 }
 
 OrBitExpression::OrBitExpression(const std::shared_ptr<IBitExpression>& left_, const std::shared_ptr<IBitExpression>& right_) : left(left_), right(right_)
@@ -445,13 +459,15 @@ bool OrBitExpression::Equals(const std::shared_ptr<IBitExpression>& other_) cons
     OrBitExpression* other = dynamic_cast<OrBitExpression*>(other_.get());
     if (other)
     {
-        return left->Equals(other->left) && right->Equals(other->right);
+        return left->Equals(other->left) && right->Equals(other->right) || left->Equals(other->right) && right->Equals(other->left);
     }
     return false;
 }
 
 void OrBitExpression::Optimize(std::shared_ptr<IBitExpression>& output, const BitExpressionStates& input)
 {
+    left->Optimize(left, input);
+    right->Optimize(right, input);
     if (Constant(input))
     {
         output = std::make_shared<ConstBitExpression>(Calculate(input));
@@ -478,6 +494,39 @@ void OrBitExpression::Optimize(std::shared_ptr<IBitExpression>& output, const Bi
             output = left;
         }
     }
+    else
+    {
+        if (left->Equals(right))
+        {
+            output = left;
+        }
+        else
+        {
+            NegBitExpression* argument2 = dynamic_cast<NegBitExpression*>(left.get());
+            if (argument2 && argument2->GetArgument()->Equals(right))
+            {
+                output = std::make_shared<ConstBitExpression>(true);
+            }
+            else
+            {
+                argument2 = dynamic_cast<NegBitExpression*>(right.get());
+                if (argument2 && argument2->GetArgument()->Equals(left))
+                {
+                    output = std::make_shared<ConstBitExpression>(true);
+                }
+            }
+        }
+    }
+}
+
+std::shared_ptr<IBitExpression> OrBitExpression::GetLeftArgument() const
+{
+    return left;
+}
+
+std::shared_ptr<IBitExpression> OrBitExpression::GetRightArgument() const
+{
+    return right;
 }
 
 AndBitExpression::AndBitExpression(const std::shared_ptr<IBitExpression>& left_, const std::shared_ptr<IBitExpression>& right_) : left(left_), right(right_)
@@ -524,13 +573,15 @@ bool AndBitExpression::Equals(const std::shared_ptr<IBitExpression>& other_) con
     AndBitExpression* other = dynamic_cast<AndBitExpression*>(other_.get());
     if (other)
     {
-        return left->Equals(other->left) && right->Equals(other->right);
+        return left->Equals(other->left) && right->Equals(other->right) || left->Equals(other->right) && right->Equals(other->left);
     }
     return false;
 }
 
 void AndBitExpression::Optimize(std::shared_ptr<IBitExpression>& output, const BitExpressionStates& input)
 {
+    left->Optimize(left, input);
+    right->Optimize(right, input);
     if (Constant(input))
     {
         output = std::make_shared<ConstBitExpression>(Calculate(input));
@@ -557,6 +608,39 @@ void AndBitExpression::Optimize(std::shared_ptr<IBitExpression>& output, const B
             output = left;
         }
     }
+    else
+    {
+        if (left->Equals(right))
+        {
+            output = left;
+        }
+        else
+        {
+            NegBitExpression* argument2 = dynamic_cast<NegBitExpression*>(left.get());
+            if (argument2 && argument2->GetArgument()->Equals(right))
+            {
+                output = std::make_shared<ConstBitExpression>(false);
+            }
+            else
+            {
+                argument2 = dynamic_cast<NegBitExpression*>(right.get());
+                if (argument2 && argument2->GetArgument()->Equals(left))
+                {
+                    output = std::make_shared<ConstBitExpression>(false);
+                }
+            }
+        }
+    }
+}
+
+std::shared_ptr<IBitExpression> AndBitExpression::GetLeftArgument() const
+{
+    return left;
+}
+
+std::shared_ptr<IBitExpression> AndBitExpression::GetRightArgument() const
+{
+    return right;
 }
 
 XorBitExpression::XorBitExpression(const std::shared_ptr<IBitExpression>& left_, const std::shared_ptr<IBitExpression>& right_) : left(left_), right(right_)
@@ -605,13 +689,15 @@ bool XorBitExpression::Equals(const std::shared_ptr<IBitExpression>& other_) con
     XorBitExpression* other = dynamic_cast<XorBitExpression*>(other_.get());
     if (other)
     {
-        return left->Equals(other->left) && right->Equals(other->right);
+        return left->Equals(other->left) && right->Equals(other->right) || left->Equals(other->right) && right->Equals(other->left);
     }
     return false;
 }
 
 void XorBitExpression::Optimize(std::shared_ptr<IBitExpression>& output, const BitExpressionStates& input)
 {
+    left->Optimize(left, input);
+    right->Optimize(right, input);
     if (Constant(input))
     {
         output = std::make_shared<ConstBitExpression>(Calculate(input));
@@ -620,4 +706,81 @@ void XorBitExpression::Optimize(std::shared_ptr<IBitExpression>& output, const B
     {
         output = std::make_shared<ConstBitExpression>(false);
     }
+    else
+    {
+        NegBitExpression* argument2 = dynamic_cast<NegBitExpression*>(left.get());
+        if (argument2 && argument2->GetArgument()->Equals(right))
+        {
+            output = std::make_shared<ConstBitExpression>(true);
+        }
+        else
+        {
+            argument2 = dynamic_cast<NegBitExpression*>(right.get());
+            if (argument2 && argument2->GetArgument()->Equals(left))
+            {
+                output = std::make_shared<ConstBitExpression>(true);
+            }
+            else if (left->Constant(input) && !left->Calculate(input))
+            {
+                output = right;
+            }
+            else if (right->Constant(input) && !right->Calculate(input))
+            {
+                output = left;
+            }
+            else if (left->Constant(input) && left->Calculate(input))
+            {
+                output = std::make_shared<NegBitExpression>(right);
+            }
+            else if (right->Constant(input) && right->Calculate(input))
+            {
+                output = std::make_shared<NegBitExpression>(left);
+            }
+        }
+    }
+}
+
+std::shared_ptr<IBitExpression> XorBitExpression::GetLeftArgument() const
+{
+    return left;
+}
+
+std::shared_ptr<IBitExpression> XorBitExpression::GetRightArgument() const
+{
+    return right;
+}
+
+std::shared_ptr<IBitExpression> const_bool(bool value)
+{
+    return std::make_shared<ConstBitExpression>(value);
+}
+
+std::shared_ptr<IBitExpression> operator&(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right)
+{
+    return std::make_shared<AndBitExpression>(left, right);
+}
+
+std::shared_ptr<IBitExpression> operator|(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right)
+{
+    return std::make_shared<OrBitExpression>(left, right);
+}
+
+std::shared_ptr<IBitExpression> operator^(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right)
+{
+    return std::make_shared<XorBitExpression>(left, right);
+}
+
+std::shared_ptr<IBitExpression> operator~(const std::shared_ptr<IBitExpression>& argument)
+{
+    return std::make_shared<NegBitExpression>(argument);
+}
+
+std::shared_ptr<IBitExpression> operator!=(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right)
+{
+    return left ^ right;
+}
+
+std::shared_ptr<IBitExpression> operator==(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right)
+{
+    return ~(left ^ right);
 }

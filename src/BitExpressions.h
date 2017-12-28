@@ -46,21 +46,21 @@ struct BitExpressionStates
     size_t GetVariableCount() const;
 
     void SetInputVarConstant(size_t var_index, bool constant);
-    bool GetInputVarConstant(size_t var_index) const;
+    bool IsInputVarConstant(size_t var_index) const;
     void SetInputVarValue(size_t var_index, work_type value);
     work_type GetInputVarValue(size_t var_index) const;
 
     void SetInputBitConstant(size_t bit_index, bool constant);
-    bool GetInputBitConstant(size_t bit_index) const;
+    bool IsInputBitConstant(size_t bit_index) const;
     void SetInputBitValue(size_t bit_index, bool value);
     bool GetInputBitValue(size_t bit_index) const;
 
     void SetBitExpression(size_t bit_index, const std::shared_ptr<IBitExpression>& expresssion);
     std::shared_ptr<IBitExpression> GetBitExpression(size_t bit_index) const;
 
-    bool GetCurrentBitConstant(size_t bit_index) const;
+    bool IsCurrentBitConstant(size_t bit_index) const;
     bool GetCurrentBitValue(size_t bit_index) const;
-    bool GetCurrentVarConstant(size_t var_index) const;
+    bool IsCurrentVarConstant(size_t var_index) const;
     work_type GetCurrentVarValue(size_t var_index) const;
     work_type GetOutputVarValue(size_t var_index) const;
 
@@ -130,6 +130,7 @@ struct NegBitExpression : public IBitExpression
     std::shared_ptr<IBitExpression> DeepCopy() const;
     bool Equals(const std::shared_ptr<IBitExpression>& other) const;
     void Optimize(std::shared_ptr<IBitExpression>& output, const BitExpressionStates& input);
+    std::shared_ptr<IBitExpression> GetArgument() const;
 private:
     std::shared_ptr<IBitExpression> argument;
 };
@@ -144,6 +145,8 @@ struct OrBitExpression : public IBitExpression
     std::shared_ptr<IBitExpression> DeepCopy() const;
     bool Equals(const std::shared_ptr<IBitExpression>& other) const;
     void Optimize(std::shared_ptr<IBitExpression>& output, const BitExpressionStates& input);
+    std::shared_ptr<IBitExpression> GetLeftArgument() const;
+    std::shared_ptr<IBitExpression> GetRightArgument() const;
 private:
     std::shared_ptr<IBitExpression> left, right;
 };
@@ -158,6 +161,8 @@ struct AndBitExpression : public IBitExpression
     std::shared_ptr<IBitExpression> DeepCopy() const;
     bool Equals(const std::shared_ptr<IBitExpression>& other) const;
     void Optimize(std::shared_ptr<IBitExpression>& output, const BitExpressionStates& input);
+    std::shared_ptr<IBitExpression> GetLeftArgument() const;
+    std::shared_ptr<IBitExpression> GetRightArgument() const;
 private:
     std::shared_ptr<IBitExpression> left, right;
 };
@@ -172,6 +177,18 @@ struct XorBitExpression : public IBitExpression
     std::shared_ptr<IBitExpression> DeepCopy() const;
     bool Equals(const std::shared_ptr<IBitExpression>& other) const;
     void Optimize(std::shared_ptr<IBitExpression>& output, const BitExpressionStates& input);
+    std::shared_ptr<IBitExpression> GetLeftArgument() const;
+    std::shared_ptr<IBitExpression> GetRightArgument() const;
 private:
     std::shared_ptr<IBitExpression> left, right;
 };
+
+std::shared_ptr<IBitExpression> const_bool(bool value);
+std::shared_ptr<IBitExpression> operator&(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right);
+std::shared_ptr<IBitExpression> operator|(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right);
+std::shared_ptr<IBitExpression> operator^(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right);
+std::shared_ptr<IBitExpression> operator~(const std::shared_ptr<IBitExpression>& argument);
+
+std::shared_ptr<IBitExpression> operator!=(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right);
+std::shared_ptr<IBitExpression> operator==(const std::shared_ptr<IBitExpression>& left, const std::shared_ptr<IBitExpression>& right);
+

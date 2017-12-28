@@ -37,23 +37,27 @@ struct FullState : public BitExpressionStates
     FullState();
 };
 
+struct IStatement;
+
+struct Program
+{
+    std::vector<std::shared_ptr<IStatement> > statements;
+};
+
 struct IStatement
 {
     size_t GetLineNumber() const;
     virtual ~IStatement();
     virtual void Execute(FullState& state) const = 0;
     virtual std::string Print(const FullState& info) const;
+    std::string GetLabel() const;
 
 protected:
-    IStatement(size_t line_number, const std::string& label);
+    IStatement(const Program& program, size_t line_number, const std::string& label);
+    const Program& program;
 private:
     size_t line_number;
     std::string label;
-};
-
-struct Program
-{
-    std::vector<std::shared_ptr<IStatement> > statements;
 };
 
 struct Nop : public IStatement
@@ -62,7 +66,7 @@ struct Nop : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    Nop(size_t line_number, const std::string& label);
+    Nop(const Program& program, size_t line_number, const std::string& label);
 };
 
 struct SetConstant : public IStatement
@@ -71,7 +75,7 @@ struct SetConstant : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    SetConstant(size_t line_number, const std::string& label, size_t result_index, BitExpressionStates::work_type value, bool hex);
+    SetConstant(const Program& program, size_t line_number, const std::string& label, size_t result_index, BitExpressionStates::work_type value, bool hex);
     size_t result_index;
     BitExpressionStates::work_type value;
     bool hex;
@@ -83,7 +87,7 @@ struct LetRA : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    LetRA(size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
+    LetRA(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
     size_t result_index;
     size_t argument_index;
 };
@@ -94,7 +98,7 @@ struct LetRAI : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    LetRAI(size_t line_number, const std::string& label, size_t result_index, size_t argument_index, size_t index_index);
+    LetRAI(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index, size_t index_index);
     size_t result_index;
     size_t argument_index;
     size_t index_index;
@@ -106,7 +110,7 @@ struct AndRA : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    AndRA(size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
+    AndRA(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
     size_t result_index;
     size_t argument_index;
 };
@@ -117,7 +121,7 @@ struct OrRA : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    OrRA(size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
+    OrRA(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
     size_t result_index;
     size_t argument_index;
 };
@@ -128,7 +132,7 @@ struct XorRA : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    XorRA(size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
+    XorRA(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
     size_t result_index;
     size_t argument_index;
 };
@@ -139,7 +143,7 @@ struct InverseR : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    InverseR(size_t line_number, const std::string& label, size_t result_index);
+    InverseR(const Program& program, size_t line_number, const std::string& label, size_t result_index);
     size_t result_index;
 };
 
@@ -149,7 +153,7 @@ struct AddRA : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    AddRA(size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
+    AddRA(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
     size_t result_index;
     size_t argument_index;
 };
@@ -160,7 +164,7 @@ struct IncR : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    IncR(size_t line_number, const std::string& label, size_t result_index);
+    IncR(const Program& program, size_t line_number, const std::string& label, size_t result_index);
     size_t result_index;
 };
 
@@ -170,7 +174,7 @@ struct MulRA : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    MulRA(size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
+    MulRA(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
     size_t result_index;
     size_t argument_index;
 };
@@ -181,7 +185,7 @@ struct RestDivideRA : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    RestDivideRA(size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
+    RestDivideRA(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
     size_t result_index;
     size_t argument_index;
 };
@@ -192,7 +196,7 @@ struct LcrRA : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    LcrRA(size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
+    LcrRA(const Program& program, size_t line_number, const std::string& label, size_t result_index, size_t argument_index);
     size_t result_index;
     size_t argument_index;
 };
@@ -204,8 +208,9 @@ struct Goto : public IStatement
     std::string Print(const FullState& info) const;
     void SetDestinationLine(size_t destination_line);
     size_t GetDestinationLine() const;
+    std::string GetDestinationLabel() const;
 protected:
-    Goto(size_t line_number, const std::string& label);
+    Goto(const Program& program, size_t line_number, const std::string& label);
 private:
     size_t destination_line;
 };
@@ -216,7 +221,7 @@ struct IfAMoreBGoto : public Goto
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    IfAMoreBGoto(size_t line_number, const std::string& label, size_t a_index, size_t b_index);
+    IfAMoreBGoto(const Program& program, size_t line_number, const std::string& label, size_t a_index, size_t b_index);
     size_t a_index;
     size_t b_index;
 };
@@ -227,7 +232,7 @@ struct IfALessBGoto : public Goto
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    IfALessBGoto(size_t line_number, const std::string& label, size_t a_index, size_t b_index);
+    IfALessBGoto(const Program& program, size_t line_number, const std::string& label, size_t a_index, size_t b_index);
     size_t a_index;
     size_t b_index;
 };
@@ -238,7 +243,7 @@ struct PrintVar : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    PrintVar(size_t line_number, const std::string& label, size_t argument_index, const std::string& text);
+    PrintVar(const Program& program, size_t line_number, const std::string& label, size_t argument_index, const std::string& text);
     size_t argument_index;
     std::string text;
 };
@@ -249,6 +254,6 @@ struct PrintText : public IStatement
     void Execute(FullState& state) const;
     std::string Print(const FullState& info) const;
 private:
-    PrintText(size_t line_number, const std::string& label, const std::string& text);
+    PrintText(const Program& program, size_t line_number, const std::string& label, const std::string& text);
     std::string text;
 };

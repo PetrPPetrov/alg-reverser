@@ -51,21 +51,27 @@ inline void PrintOutput(const BitExpressionStates& state)
     }
 }
 
+inline void PrintCurrentBit(const BitExpressionStates& state, size_t var_index, size_t bit_number)
+{
+    std::string value;
+    size_t bit_index = BitExpressionStates::GetBitIndex(var_index, bit_number);
+    if (state.IsCurrentBitConstant(bit_index))
+    {
+        value = state.GetCurrentBitValue(bit_index) ? "1" : "0";
+    }
+    else
+    {
+        value = state.GetBitExpression(bit_index)->ToString(state);
+        std::cout << "Var " << state.GetVarName(var_index) << "." << bit_number << " = " << value << std::endl;
+    }
+    //std::cout << "Var " << state.GetVarName(var_index) << "." << bit_number << " = " << value << std::endl;
+}
+
 inline void PrintCurrentVar(const BitExpressionStates& state, size_t var_index)
 {
     for (size_t bit_number = 0; bit_number < BitExpressionStates::bit_count; ++bit_number)
     {
-        std::string value;
-        size_t bit_index = BitExpressionStates::GetBitIndex(var_index, bit_number);
-        if (state.GetCurrentBitConstant(bit_index))
-        {
-            value = state.GetCurrentBitValue(bit_index) ? "1" : "0";
-        }
-        else
-        {
-            value = state.GetBitExpression(bit_index)->ToString(state);
-        }
-        std::cout << "Var " << state.GetVarName(var_index) << "." << bit_number << " = " << value << std::endl;
+        PrintCurrentBit(state, var_index, bit_number);
     }
 }
 
